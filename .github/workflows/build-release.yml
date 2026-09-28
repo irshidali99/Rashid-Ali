@@ -1,0 +1,72 @@
+name: Build release APK
+
+# Builds installable debug APK + unsigned release APK/AAB on GitHub runners
+# (which have the full Android SDK), then commits them to builds/ on this branch.
+on:
+  workflow_dispatch:
+  push:
+    branches: ["arena/01a0e65f-rashid-ali"]
+    paths:
+      - "app/**"
+      - "gradle/**"
+      - "*.kts"
+      - "*.properties"
+      - ".github/workflows/**"
+
+concurrency:
+  group: build-apk-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Set up Gradle 9.3.1
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 9.3.1
+
+      - name: Build debug APK (installable, debug-signed)
+        run: gradle :app:assembleDebug --stacktrace
+
+      - name: Build release APK + AAB (unsigned, no upload key in CI)
+        run: gradle :app:assembleRelease :app:bundleRelease --stacktrace
+
+      - name: Collect outputs
+        run: |
+          mkdir -p builds
+          cp app/build/outputs/apk/debug/app-debug.apk builds/duplicate-remover-debug.apk
+          cp app/build/outputs/apk/release/app-release-unsigned.apk builds/duplicate-remover-release-unsigned.apk
+          cp app/build/outputs/bundle/release/app-release.aab builds/duplicate-remover-release.aab
+          ls -lh builds/
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: duplicate-remover-apks
+          path: builds/
+          retention-days: 30
+
+      - name: Commit APKs back to branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add builds/
+          if git diff --staged --quiet; then
+            echo "No APK changes to commit."
+            exit 0
+          fi
+          git commit -m "CI build: debug + release APK/AAB [skip ci]"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
