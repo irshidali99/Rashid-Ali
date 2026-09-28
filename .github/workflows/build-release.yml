@@ -13,6 +13,10 @@ on:
       - "*.properties"
       - ".github/workflows/**"
 
+# Needed so the job can commit built APKs / diagnostics back to the branch.
+permissions:
+  contents: write
+
 concurrency:
   group: build-apk-${{ github.ref }}
   cancel-in-progress: false
