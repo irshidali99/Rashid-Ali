@@ -1,0 +1,110 @@
+plugins {
+  alias(libs.plugins.android.application)
+  alias(libs.plugins.kotlin.compose)
+  alias(libs.plugins.roborazzi)
+}
+
+android {
+  namespace = "com.example"
+  compileSdk { version = release(36) { minorApiLevel = 1 } }
+
+  defaultConfig {
+    applicationId = "com.aistudio.duplicateremover.jkwlq"
+    minSdk = 24
+    targetSdk = 36
+    versionCode = 1
+    versionName = "1.0"
+
+    testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+  }
+
+  signingConfigs {
+    create("release") {
+      // Upload keystore for Google Play. Provide via environment variables
+      // (KEYSTORE_PATH, STORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD) or place
+      // my-upload-key.jks in the project root. Release signing is only
+      // applied when the keystore file actually exists, so plain
+      // assembleRelease builds don't fail on machines without the key.
+      val keystorePath = System.getenv("KEYSTORE_PATH") ?: "${rootDir}/my-upload-key.jks"
+      storeFile = file(keystorePath)
+      storePassword = System.getenv("STORE_PASSWORD")
+      keyAlias = System.getenv("KEY_ALIAS") ?: "upload"
+      keyPassword = System.getenv("KEY_PASSWORD")
+    }
+    // NOTE: no custom debug signing — the default Android debug keystore
+    // (~/.android/debug.keystore) is used automatically.
+  }
+
+  buildTypes {
+    release {
+      isCrunchPngs = false
+      isMinifyEnabled = false
+      proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+      val uploadKeystore = file(System.getenv("KEYSTORE_PATH") ?: "${rootDir}/my-upload-key.jks")
+      if (uploadKeystore.exists()) {
+        signingConfig = signingConfigs.getByName("release")
+      }
+      // else: builds unsigned; sign the AAB with your upload key before Play upload.
+    }
+  }
+  compileOptions {
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
+  }
+  buildFeatures {
+    compose = true
+    buildConfig = true
+  }
+  testOptions { unitTests { isIncludeAndroidResources = true } }
+  dependenciesInfo {
+    includeInApk = false
+    includeInBundle = true
+  }
+}
+
+// NOTE (Sept 2026 cleanup): Firebase (AI, App Check), Room, Retrofit, Moshi
+// and OkHttp were removed — the app is 100% offline and none of that code is
+// referenced anywhere. Removing them shrinks the APK/AAB significantly.
+// Some unused dependencies are commented out below instead of being removed.
+// This makes it easy to add them back in the future if needed.
+dependencies {
+  implementation(platform(libs.androidx.compose.bom))
+  implementation(libs.accompanist.permissions)
+  implementation(libs.androidx.activity.compose)
+  // implementation(libs.androidx.camera.camera2)
+  // implementation(libs.androidx.camera.core)
+  // implementation(libs.androidx.camera.lifecycle)
+  // implementation(libs.androidx.camera.view)
+  implementation(libs.androidx.compose.material.icons.core)
+  implementation(libs.androidx.compose.material.icons.extended)
+  implementation(libs.androidx.compose.material3)
+  implementation(libs.androidx.compose.ui)
+  implementation(libs.androidx.compose.ui.graphics)
+  implementation(libs.androidx.compose.ui.tooling.preview)
+  implementation(libs.androidx.core.ktx)
+  // implementation(libs.androidx.datastore.preferences)
+  implementation(libs.androidx.lifecycle.runtime.compose)
+  implementation(libs.androidx.lifecycle.runtime.ktx)
+  implementation(libs.androidx.lifecycle.viewmodel.compose)
+  implementation(libs.androidx.navigation.compose)
+  implementation(libs.coil.compose)
+  implementation(libs.kotlinx.coroutines.android)
+  implementation(libs.kotlinx.coroutines.core)
+  // implementation(libs.play.services.location)
+  testImplementation(libs.androidx.compose.ui.test.junit4)
+  testImplementation(libs.androidx.core)
+  testImplementation(libs.androidx.junit)
+  testImplementation(libs.junit)
+  testImplementation(libs.kotlinx.coroutines.test)
+  testImplementation(libs.robolectric)
+  testImplementation(libs.roborazzi)
+  testImplementation(libs.roborazzi.compose)
+  testImplementation(libs.roborazzi.junit.rule)
+  androidTestImplementation(platform(libs.androidx.compose.bom))
+  androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+  androidTestImplementation(libs.androidx.espresso.core)
+  androidTestImplementation(libs.androidx.junit)
+  androidTestImplementation(libs.androidx.runner)
+  debugImplementation(libs.androidx.compose.ui.test.manifest)
+  debugImplementation(libs.androidx.compose.ui.tooling)
+}

@@ -1,0 +1,6 @@
+{
+  "name": "Duplicate Remover",
+  "description": "An app that scans your device for duplicate files (photos, audio, videos, and documents), groups them, and helps you remove exact copies based on content to recover storage space.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
