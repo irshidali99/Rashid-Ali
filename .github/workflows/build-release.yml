@@ -30,8 +30,13 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Prepare Android SDK (preinstalled on runner)
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$PATH"
+          which sdkmanager || ls "$ANDROID_HOME/cmdline-tools"
+          yes | sdkmanager --licenses > /dev/null 2>&1 || true
+          sdkmanager --list_installed 2>/dev/null | tail -n 25 || true
 
       - name: Set up Gradle 9.3.1
         uses: gradle/actions/setup-gradle@v4
@@ -39,10 +44,14 @@ jobs:
           gradle-version: 9.3.1
 
       - name: Build debug APK (installable, debug-signed)
-        run: gradle :app:assembleDebug --stacktrace
+        run: |
+          set -o pipefail
+          gradle :app:assembleDebug --stacktrace 2>&1 | tee gradle-debug.log
 
       - name: Build release APK + AAB (unsigned, no upload key in CI)
-        run: gradle :app:assembleRelease :app:bundleRelease --stacktrace
+        run: |
+          set -o pipefail
+          gradle :app:assembleRelease :app:bundleRelease --stacktrace 2>&1 | tee gradle-release.log
 
       - name: Collect outputs
         run: |
@@ -69,4 +78,15 @@ jobs:
             exit 0
           fi
           git commit -m "CI build: debug + release APK/AAB [skip ci]"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+
+      - name: Commit diagnostics on failure
+        if: failure()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          mkdir -p builds
+          { echo "===== debug ====="; tail -c 150000 gradle-debug.log 2>/dev/null; echo; echo "===== release ====="; tail -c 150000 gradle-release.log 2>/dev/null; } > builds/last-build-error.log
+          git add builds/last-build-error.log
+          git commit -m "CI: build failure diagnostics [skip ci]" || exit 0
           git push origin "HEAD:${GITHUB_REF_NAME}"
